@@ -8,6 +8,9 @@ central_logs_retention_days: 30
 central_log_maxopenfiles: 100000
 central_log_by_function: False
 
+
+rsyslog_service_state: "started"
+
 # central_log_ship_these_programs is used in a jinja2
 # for loop that creates rsyslog rules like:
 # if $programname startswith 'ansible' then @10.1.1.1
