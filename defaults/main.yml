@@ -7,6 +7,7 @@ central_logs_directory: "/var/log/remote/servers"
 central_logs_retention_days: 30
 central_log_maxopenfiles: 100000
 central_log_by_function: False
+central_log_ip_startswith: "10."
 
 
 rsyslog_service_state: "started"
