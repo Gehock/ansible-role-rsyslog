@@ -15,7 +15,7 @@ $umask 0000
 $FileCreateMode 0644
 {# The following group is not available in tritonV3 #}
 {# $FileGroup admin #}
-{% endif %}
+{% endif %}{# if not central_log_listener #}
 
 {% if central_log_listener %}
 # Provides UDP syslog reception
@@ -25,29 +25,42 @@ $UDPServerRun 514
 $ModLoad imtcp
 $InputTCPServerRun 514
 
+$template PerHostSecure,"{{ central_logs_directory }}/%HOSTNAME%/secure"
+$template PerHostMessages,"{{ central_logs_directory }}/%HOSTNAME%/messages"
+$template PerHostSlurm,"{{ central_logs_directory }}/%HOSTNAME%/slurm.log"
+$template LogFmt,"%timereported:::date-rfc3339% %hostname% %syslogseverity-text% %syslogtag%%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf%\n"
+
 $MaxOpenFiles {{ central_log_maxopenfiles }}
 {% if central_log_extra_settings is defined %}
 {% for log_setting in central_log_extra_settings %}
 {{ log_setting }}
 {% endfor %}
-{% endif %}
+{% endif %}{# if central_log_extra_settings is defined #}
 
 {% if central_log_by_function %}
-if $fromhost-ip startswith '10.' then {
-	*.info;mail.none;authpriv.none;cron.none {{ central_logs_directory }}/messages;RSYSLOG_FileFormat
-	authpriv.* {{ central_logs_directory }}/secure;RSYSLOG_FileFormat
-	mail.* {{ central_logs_directory }}/maillog;RSYSLOG_FileFormat
-	cron.* {{ central_logs_directory }}/cron;RSYSLOG_FileFormat
+if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
+	*.info;mail.none;authpriv.none;cron.none {{ central_logs_directory }}/messages;LogFmt
+	authpriv.* {{ central_logs_directory }}/secure;LogFmt
+	mail.* {{ central_logs_directory }}/maillog;LogFmt
+	cron.* {{ central_logs_directory }}/cron;LogFmt
 	stop
 }
 
-{% else %}
-$Template GENERALTEMPLATE,"{{ central_logs_directory }}/%hostname%.log"
-$template LogFmt,"%timereported:::date-rfc3339% %hostname% %syslogseverity-text% %syslogtag%%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf%\n"
+{% else %}{# if central_log_by_function #}
+$Template PerHostFile,"{{ central_logs_directory }}/%hostname%.log"
 
-if $fromhost-ip startswith '10.' then {
-	?GENERALTEMPLATE;LogFmt
+if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
+	if $programname startswith 'slurm' then {
+		?PerHostSlurm;LogFmt
+	}
+
+	*.info;mail.none;authpriv.none;cron.none ?PerHostMessages;LogFmt
+	authpriv.* ?PerHostSecure;LogFmt
+	mail.* /var/log/remote/servers/maillog;LogFmt
+	cron.* /var/log/remote/servers/cron;LogFmt
+
+	?PerHostFile;LogFmt
 	stop
 }
-{% endif %}
-{% endif %}
+{% endif %}{# if central_log_by_function #}
+{% endif %}{# if central_log_listener #}
