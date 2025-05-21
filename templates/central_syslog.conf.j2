@@ -28,6 +28,7 @@ $InputTCPServerRun 514
 $template PerHostSecure,"{{ central_logs_directory }}/%HOSTNAME%/secure"
 $template PerHostMessages,"{{ central_logs_directory }}/%HOSTNAME%/messages"
 $template PerHostSlurm,"{{ central_logs_directory }}/%HOSTNAME%/slurm.log"
+$template LogFmt,"%timereported:::date-rfc3339% %hostname% %syslogseverity-text% %syslogtag%%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf%\n"
 
 $MaxOpenFiles {{ central_log_maxopenfiles }}
 {% if central_log_extra_settings is defined %}
@@ -38,26 +39,25 @@ $MaxOpenFiles {{ central_log_maxopenfiles }}
 
 {% if central_log_by_function %}
 if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
-	*.info;mail.none;authpriv.none;cron.none {{ central_logs_directory }}/messages;RSYSLOG_FileFormat
-	authpriv.* {{ central_logs_directory }}/secure;RSYSLOG_FileFormat
-	mail.* {{ central_logs_directory }}/maillog;RSYSLOG_FileFormat
-	cron.* {{ central_logs_directory }}/cron;RSYSLOG_FileFormat
+	*.info;mail.none;authpriv.none;cron.none {{ central_logs_directory }}/messages;LogFmt
+	authpriv.* {{ central_logs_directory }}/secure;LogFmt
+	mail.* {{ central_logs_directory }}/maillog;LogFmt
+	cron.* {{ central_logs_directory }}/cron;LogFmt
 	stop
 }
 
 {% else %}{# if central_log_by_function #}
 $Template PerHostFile,"{{ central_logs_directory }}/%hostname%.log"
-$template LogFmt,"%timereported:::date-rfc3339% %hostname% %syslogseverity-text% %syslogtag%%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf%\n"
 
 if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
 	if $programname startswith 'slurm' then {
-		?PerHostSlurm
+		?PerHostSlurm;LogFmt
 	}
 
-	*.info;mail.none;authpriv.none;cron.none ?PerHostMessages
-	authpriv.* ?PerHostSecure
-	mail.* /var/log/remote/servers/maillog;RSYSLOG_FileFormat
-	cron.* /var/log/remote/servers/cron;RSYSLOG_FileFormat
+	*.info;mail.none;authpriv.none;cron.none ?PerHostMessages;LogFmt
+	authpriv.* ?PerHostSecure;LogFmt
+	mail.* /var/log/remote/servers/maillog;LogFmt
+	cron.* /var/log/remote/servers/cron;LogFmt
 
 	?PerHostFile;LogFmt
 	stop
