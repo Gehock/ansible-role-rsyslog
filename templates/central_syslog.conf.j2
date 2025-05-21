@@ -15,7 +15,7 @@ $umask 0000
 $FileCreateMode 0644
 {# The following group is not available in tritonV3 #}
 {# $FileGroup admin #}
-{% endif %}
+{% endif %}{# if not central_log_listener #}
 
 {% if central_log_listener %}
 # Provides UDP syslog reception
@@ -25,12 +25,16 @@ $UDPServerRun 514
 $ModLoad imtcp
 $InputTCPServerRun 514
 
+$template PerHostSecure,"{{ central_logs_directory }}/%HOSTNAME%/secure"
+$template PerHostMessages,"{{ central_logs_directory }}/%HOSTNAME%/messages"
+$template PerHostSlurm,"{{ central_logs_directory }}/%HOSTNAME%/slurm.log"
+
 $MaxOpenFiles {{ central_log_maxopenfiles }}
 {% if central_log_extra_settings is defined %}
 {% for log_setting in central_log_extra_settings %}
 {{ log_setting }}
 {% endfor %}
-{% endif %}
+{% endif %}{# if central_log_extra_settings is defined #}
 
 {% if central_log_by_function %}
 if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
@@ -41,13 +45,22 @@ if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
 	stop
 }
 
-{% else %}
-$Template GENERALTEMPLATE,"{{ central_logs_directory }}/%hostname%.log"
+{% else %}{# if central_log_by_function #}
+$Template PerHostFile,"{{ central_logs_directory }}/%hostname%.log"
 $template LogFmt,"%timereported:::date-rfc3339% %hostname% %syslogseverity-text% %syslogtag%%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf%\n"
 
 if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
-	?GENERALTEMPLATE;LogFmt
+	if $programname startswith 'slurm' then {
+		?PerHostSlurm
+	}
+
+	*.info;mail.none;authpriv.none;cron.none ?PerHostMessages
+	authpriv.* ?PerHostSecure
+	mail.* /var/log/remote/servers/maillog;RSYSLOG_FileFormat
+	cron.* /var/log/remote/servers/cron;RSYSLOG_FileFormat
+
+	?PerHostFile;LogFmt
 	stop
 }
-{% endif %}
-{% endif %}
+{% endif %}{# if central_log_by_function #}
+{% endif %}{# if central_log_listener #}
