@@ -29,6 +29,7 @@ $template PerHostSecure,"{{ central_logs_directory }}/%HOSTNAME%/secure"
 $template PerHostMessages,"{{ central_logs_directory }}/%HOSTNAME%/messages"
 $template PerHostSlurm,"{{ central_logs_directory }}/%HOSTNAME%/slurm.log"
 $template LogFmt,"%timereported:::date-rfc3339% %hostname% %syslogseverity-text% %syslogtag%%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf%\n"
+$Template CombinedPerHost,"{{ central_logs_directory }}/%hostname%/combined.log"
 
 $MaxOpenFiles {{ central_log_maxopenfiles }}
 {% if central_log_extra_settings is defined %}
@@ -47,7 +48,6 @@ if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
 }
 
 {% else %}{# if central_log_by_function #}
-$Template PerHostFile,"{{ central_logs_directory }}/%hostname%.log"
 
 if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
 	if $programname startswith 'slurm' then {
@@ -59,7 +59,7 @@ if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
 	mail.* /var/log/remote/servers/maillog;LogFmt
 	cron.* /var/log/remote/servers/cron;LogFmt
 
-	?PerHostFile;LogFmt
+	?CombinedPerHost;LogFmt
 	stop
 }
 {% endif %}{# if central_log_by_function #}
