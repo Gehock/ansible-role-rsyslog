@@ -52,6 +52,7 @@ if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
 if $fromhost-ip startswith '{{ central_log_ip_startswith }}' then {
 	if $programname startswith 'slurm' then {
 		?PerHostSlurm;LogFmt
+		stop
 	}
 
 	*.info;mail.none;authpriv.none;cron.none ?PerHostMessages;LogFmt
